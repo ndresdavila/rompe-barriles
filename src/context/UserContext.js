@@ -1,5 +1,3 @@
-// src/context/UserContext.js
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -8,7 +6,7 @@ import { db } from '../firebase';
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
-  const [coins, setCoins] = useState(100);
+  const [coins, setCoins] = useState(null); // Cambia el valor inicial a null
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -18,11 +16,21 @@ export const UserProvider = ({ children }) => {
         const userDoc = await getDoc(userRef);
         if (userDoc.exists()) {
           setCoins(userDoc.data().coins);
+        } else {
+          console.log('No hay datos para este usuario');
         }
       }
     };
 
-    loadUserData();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        loadUserData();
+      } else {
+        setCoins(null); // Limpiar monedas si el usuario cierra sesión
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const updateCoins = async (newCoins) => {

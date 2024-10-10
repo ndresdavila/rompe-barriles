@@ -1,26 +1,36 @@
+// src/components/GamePage.js
+
 import { useState } from 'react';
+import { useUser } from '../context/UserContext'; // Importa el contexto
 
 const GamePage = () => {
   const [numberInput, setNumberInput] = useState('');
-  const [attempts, setAttempts] = useState(7); // Cambiado a 7 intentos
+  const [attempts, setAttempts] = useState(7);
   const [result, setResult] = useState(null);
-  const [points, setPoints] = useState(100); // Agregar estado para los puntos
+  const [randomNumber, setRandomNumber] = useState(null); // Estado para almacenar el número aleatorio
+  const { coins, updateCoins } = useUser(); // Usa el contexto
 
   const handleGuess = () => {
-    const randomNumber = Math.floor(Math.random() * 10) + 1; // Número aleatorio del 1 al 10
+    // Generar el número aleatorio solo al inicio del juego
+    if (randomNumber === null) {
+      const newRandomNumber = Math.floor(Math.random() * 10) + 1;
+      setRandomNumber(newRandomNumber);
+    }
+
     if (parseInt(numberInput) === randomNumber) {
       setResult('¡Acertaste!');
-      setPoints(points + 10); // Aumentar puntos al acertar
-      setAttempts(7); // Reiniciar intentos al acertar
+      updateCoins(coins + 10); // Actualizar monedas
+      setAttempts(7); // Reiniciar intentos
+      setRandomNumber(null); // Reiniciar el número aleatorio para el próximo juego
     } else {
       setAttempts(attempts - 1);
-      setResult('¡Intenta de nuevo!');
+      setResult(`¡Intenta de nuevo! El número es ${parseInt(numberInput) < randomNumber ? 'mayor' : 'menor'} que ${numberInput}.`);
 
-      // Si no hay más intentos, reiniciar el juego
       if (attempts === 1) {
         alert('Se han acabado los intentos. Reiniciando el juego.');
         setAttempts(7); // Reiniciar intentos
-        setPoints(points > 0 ? points - 5 : 0); // Quitar puntos si hay intentos agotados
+        updateCoins(coins > 0 ? coins - 5 : 0); // Actualizar monedas
+        setRandomNumber(null); // Reiniciar el número aleatorio para el próximo juego
       }
     }
     setNumberInput(''); // Limpiar el input después de cada intento
@@ -35,12 +45,12 @@ const GamePage = () => {
         onChange={(e) => setNumberInput(e.target.value)}
         min="1"
         max="10"
-        style={{ appearance: 'none', WebkitAppearance: 'none' }} // Quitar las flechas
+        style={{ appearance: 'none', WebkitAppearance: 'none' }}
       />
       <button onClick={handleGuess}>Enviar</button>
       {result && <p>{result}</p>}
       <p>Intentos restantes: {attempts}</p>
-      <p>Puntos actuales: {points}</p> {/* Mostrar puntos actuales */}
+      <p>Monedas actuales: {coins}</p>
     </div>
   );
 };

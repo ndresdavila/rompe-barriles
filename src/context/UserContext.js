@@ -7,6 +7,7 @@ const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
   const [coins, setCoins] = useState(null); // Cambia el valor inicial a null
+  const [prizes, setPrizes] = useState([]); // Estado para los premios del usuario
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -15,7 +16,8 @@ export const UserProvider = ({ children }) => {
         const userRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userRef);
         if (userDoc.exists()) {
-          setCoins(userDoc.data().coins);
+          setCoins(userDoc.data().coins || 0); // Asegúrate de establecer un valor por defecto
+          setPrizes(userDoc.data().prizes || []); // Cargar premios del usuario
         } else {
           console.log('No hay datos para este usuario');
         }
@@ -27,6 +29,7 @@ export const UserProvider = ({ children }) => {
         loadUserData();
       } else {
         setCoins(null); // Limpiar monedas si el usuario cierra sesión
+        setPrizes([]); // Limpiar premios si el usuario cierra sesión
       }
     });
 
@@ -42,8 +45,17 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  const updatePrizes = async (newPrizes) => {
+    const user = auth.currentUser;
+    if (user) {
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, { prizes: newPrizes }, { merge: true });
+      setPrizes(newPrizes);
+    }
+  };
+
   return (
-    <UserContext.Provider value={{ coins, updateCoins }}>
+    <UserContext.Provider value={{ coins, updateCoins, prizes, updatePrizes }}>
       {children}
     </UserContext.Provider>
   );

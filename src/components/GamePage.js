@@ -1,14 +1,14 @@
-// src/components/GamePage.js
-
 import { useState } from 'react';
 import { useUser } from '../context/UserContext'; // Importa el contexto
+import { useNavigate } from 'react-router-dom'; // Importa useNavigate
 
 const GamePage = () => {
   const [numberInput, setNumberInput] = useState('');
   const [attempts, setAttempts] = useState(7);
   const [result, setResult] = useState(null);
-  const [randomNumber, setRandomNumber] = useState(null); // Estado para almacenar el número aleatorio
+  const [randomNumber, setRandomNumber] = useState(null);
   const { coins, updateCoins } = useUser(); // Usa el contexto
+  const navigate = useNavigate(); // Crea la instancia de navigate
 
   const handleGuess = () => {
     // Generar el número aleatorio solo al inicio del juego
@@ -51,6 +51,7 @@ const GamePage = () => {
       {result && <p>{result}</p>}
       <p>Intentos restantes: {attempts}</p>
       <p>Monedas actuales: {coins}</p>
+      <button onClick={() => navigate('/menu')}>Regresar al Menú Principal</button> {/* Botón de regresar al menú */}
     </div>
   );
 };

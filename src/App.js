@@ -1,22 +1,25 @@
-// src/App.js
-
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import LoginPage from './components/LoginPage';
 import MainMenu from './components/MainMenu';
 import GamePage from './components/GamePage';
 import StorePage from './components/StorePage';
-import { UserProvider } from './context/UserContext'; // Importa el contexto
+import { UserProvider } from './context/UserContext';
+import ProtectedRoute from './components/ProtectedRoute'; // Ruta protegida para usuarios autenticados
+import PublicRoute from './components/PublicRoute'; // Nueva ruta pública
 
 function App() {
   return (
-    <UserProvider> {/* Envuelve tu aplicación con el UserProvider */}
+    <UserProvider> 
       <Router>
         <Routes>
-          <Route exact path="/" element={<LoginPage />} />
-          <Route path="/menu" element={<MainMenu />} />
-          <Route path="/game" element={<GamePage />} />
-          <Route path="/store" element={<StorePage />} />
+          {/* Ruta pública para login, solo si el usuario no está autenticado */}
+          <Route exact path="/" element={<PublicRoute><LoginPage /></PublicRoute>} />
+          
+          {/* Rutas protegidas para usuarios autenticados */}
+          <Route path="/menu" element={<ProtectedRoute><MainMenu /></ProtectedRoute>} />
+          <Route path="/game" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
+          <Route path="/store" element={<ProtectedRoute><StorePage /></ProtectedRoute>} />
         </Routes>
       </Router>
     </UserProvider>

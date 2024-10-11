@@ -24,6 +24,18 @@ const GamePage = () => {
     });
   }, [coinsOnMap, minCoinDistanceX, minCoinDistanceY]);
 
+  // Función para detectar colisiones entre el personaje y los obstáculos
+  const detectCollision = useCallback(() => {
+    return obstacles.some(obstacle => {
+      const isCollision = 
+        50 < obstacle.x + obstacle.width && // Verifica si el personaje (posición en X) está dentro del rango del obstáculo
+        50 + 20 > obstacle.x && // Verifica si el personaje (ancho del personaje) choca con el obstáculo
+        playerY < obstacle.y + obstacle.height && // Verifica si el personaje (posición en Y) está dentro del rango vertical del obstáculo
+        playerY + 20 > obstacle.y; // Verifica si el personaje (altura) choca con el obstáculo
+      return isCollision;
+    });
+  }, [obstacles, playerY]);
+
   useEffect(() => {
     let interval;
     if (isGameStarted && !isGamePaused) {
@@ -70,11 +82,18 @@ const GamePage = () => {
           }
           return true;
         }));
+
+        // Verificar colisión entre el personaje y los obstáculos
+        if (detectCollision()) {
+          alert('Perdiste! Reiniciando el juego...');
+          startGame(); // Reinicia el juego después de la colisión
+        }
+
       }, 100);
     }
 
     return () => clearInterval(interval);
-  }, [isGameStarted, isGamePaused, bullets, playerY, coins, updateCoins, coinsOnMap, isTooCloseToOtherCoins]);
+  }, [isGameStarted, isGamePaused, bullets, playerY, coins, updateCoins, coinsOnMap, isTooCloseToOtherCoins, detectCollision]);
 
   useEffect(() => {
     if (isJumping) {
@@ -109,6 +128,7 @@ const GamePage = () => {
     setCoinsOnMap([]);
     setBullets([]);
     setIsGamePaused(false);
+    setPlayerY(200);
   };
 
   const togglePause = () => {

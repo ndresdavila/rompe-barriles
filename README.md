@@ -1,3 +1,6 @@
+# INFO IMPORTANTE
+contract address:    0x5A1B13BF4b3A4beAd480d5C9892b3E476d8D8b27
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

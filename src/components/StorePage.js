@@ -1,20 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { useUser } from '../context/UserContext'; // Importa el contexto
-import { auth } from '../firebase'; // Asegúrate de importar auth
+import { useUser } from '../context/UserContext';
+import { auth } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase'; // Asegúrate de importar db
+import { db } from '../firebase';
 import { Link } from 'react-router-dom';
 
 const StorePage = () => {
-  // eslint-disable-next-line no-unused-vars
-  const { coins, updateCoins, prizes, updatePrizes } = useUser(); // Usa el contexto
-  const [userPrizes, setUserPrizes] = useState([]); // Estado para premios del usuario
+  const { coins, updateCoins } = useUser(); // Eliminado tokens y updateTokens
+  const [userPrizes, setUserPrizes] = useState([]);
 
-  const prizeCost = 30; // Costo de los premios
-  const sellPrice = 20; // Precio de venta de los premios
-  const allPrizes = Array.from({ length: 5 }, (_, i) => `Premio ${i + 1}`); // Define los premios disponibles
+  const coinPrizeCost = 30;
+  const sellPrice = 20;
+  const allCoinPrizes = Array.from({ length: 5 }, (_, i) => `Premio ${i + 1}`);
 
-  // Cargar premios del usuario al iniciar la página
   useEffect(() => {
     const loadUserPrizes = async () => {
       const user = auth.currentUser;
@@ -22,7 +20,7 @@ const StorePage = () => {
         const userRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userRef);
         if (userDoc.exists()) {
-          const prizes = userDoc.data().prizes || []; // Cargar premios del usuario
+          const prizes = userDoc.data().prizes || [];
           setUserPrizes(prizes);
         }
       }
@@ -31,19 +29,15 @@ const StorePage = () => {
     loadUserPrizes();
   }, []);
 
-  // Función para comprar un premio
-  const buyPrize = async (prize) => {
-    if (coins >= prizeCost) {
-      if (!userPrizes.includes(prize)) { // Verificar si el usuario ya tiene el premio
+  const buyCoinPrize = async (prize) => {
+    if (coins >= coinPrizeCost) {
+      if (!userPrizes.includes(prize)) {
         const newPrizes = [...userPrizes, prize];
-        updateCoins(coins - prizeCost); // Actualiza monedas
-
-        // Actualiza los premios en Firebase
+        updateCoins(coins - coinPrizeCost);
         const user = auth.currentUser;
         const userRef = doc(db, 'users', user.uid);
         await setDoc(userRef, { prizes: newPrizes }, { merge: true });
-
-        setUserPrizes(newPrizes); // Actualiza el estado local
+        setUserPrizes(newPrizes);
       } else {
         alert('Ya tienes este premio.');
       }
@@ -52,17 +46,13 @@ const StorePage = () => {
     }
   };
 
-  // Función para vender un premio
   const sellPrizeHandler = async (prize) => {
     const newPrizes = userPrizes.filter(p => p !== prize);
-    updateCoins(coins + sellPrice); // Actualiza monedas
-
-    // Actualiza los premios en Firebase
+    updateCoins(coins + sellPrice);
     const user = auth.currentUser;
     const userRef = doc(db, 'users', user.uid);
     await setDoc(userRef, { prizes: newPrizes }, { merge: true });
-
-    setUserPrizes(newPrizes); // Actualiza el estado local
+    setUserPrizes(newPrizes);
   };
 
   return (
@@ -70,15 +60,15 @@ const StorePage = () => {
       <h1>Tienda de Premios</h1>
       <p>Monedas disponibles: {coins}</p>
 
-      <h2>Premios disponibles para comprar</h2>
+      <h2>Premios disponibles para comprar con Monedas</h2>
       <ul>
-        {allPrizes.map((prize) => (
+        {allCoinPrizes.map((prize) => (
           <li key={prize}>
             {prize} 
             {userPrizes.includes(prize) ? (
               <span> - Ya lo tienes</span>
             ) : (
-              <button onClick={() => buyPrize(prize)}>Comprar (30 monedas)</button>
+              <button onClick={() => buyCoinPrize(prize)}>Comprar (30 monedas)</button>
             )}
           </li>
         ))}

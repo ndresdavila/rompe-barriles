@@ -4,7 +4,7 @@ import { auth } from '../firebase'; // Importa Firebase Auth
 import { signOut } from 'firebase/auth'; // Importa la función signOut
 
 const MainMenu = () => {
-  const { coins } = useUser(); // Usa el contexto
+  const { coins, tokens } = useUser(); // Usa el contexto
   const navigate = useNavigate(); // Crea la instancia de navigate
 
   const handleLogout = async () => {
@@ -27,6 +27,7 @@ const MainMenu = () => {
       </Link>
       <div>
         <p>Monedas acumuladas: {coins}</p>
+        <p>Tokens acumulados: {tokens}</p> {/* Mostrar tokens */}
         <button onClick={handleLogout}>Cerrar Sesión</button> {/* Botón de cerrar sesión */}
       </div>
     </div>

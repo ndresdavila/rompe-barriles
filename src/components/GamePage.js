@@ -1,116 +1,206 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useUser } from '../context/UserContext'; 
+import { useUser } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
 
 const GamePage = () => {
   const [playerY, setPlayerY] = useState(200);
   const [obstacles, setObstacles] = useState([]);
   const [coinsOnMap, setCoinsOnMap] = useState([]);
+  const [bulletsOnMap, setBulletsOnMap] = useState([]);
+  const [greenBulletsOnMap, setGreenBulletsOnMap] = useState([]);
   const [isJumping, setIsJumping] = useState(false);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [isGamePaused, setIsGamePaused] = useState(false);
-  const [bullets, setBullets] = useState([]);
-  const { coins, updateCoins } = useUser(); 
+  const [remainingBullets, setRemainingBullets] = useState(6);
+  const { coins, updateCoins } = useUser();
   const navigate = useNavigate();
-  
-  const minCoinDistanceX = 50;
-  const minCoinDistanceY = 30;
 
-  const isTooCloseToOtherCoins = useCallback((newCoinX, newCoinY) => {
-    return coinsOnMap.some(coin => {
-      const distanceX = Math.abs(newCoinX - coin.x);
-      const distanceY = Math.abs(newCoinY - coin.y);
-      return distanceX < minCoinDistanceX && distanceY < minCoinDistanceY;
-    });
-  }, [coinsOnMap, minCoinDistanceX, minCoinDistanceY]);
+  const minDistance = 20;
 
-  // Función para detectar colisiones entre el personaje y los obstáculos
+  const isOverlapping = (x, y) => {
+    const isCoinOverlap = coinsOnMap.some(coin => 
+      Math.abs(coin.x - x) < minDistance && Math.abs(coin.y - y) < minDistance
+    );
+
+    const isObstacleOverlap = obstacles.some(obstacle => 
+      Math.abs(obstacle.x - x) < minDistance && Math.abs(obstacle.y - y) < minDistance
+    );
+
+    const isBulletOverlap = bulletsOnMap.some(bullet => 
+      Math.abs(bullet.x - x) < minDistance && Math.abs(bullet.y - y) < minDistance
+    );
+
+    const isGreenBulletOverlap = greenBulletsOnMap.some(greenBullet =>
+      Math.abs(greenBullet.x - x) < minDistance && Math.abs(greenBullet.y - y) < minDistance
+    );
+
+    return isCoinOverlap || isObstacleOverlap || isBulletOverlap || isGreenBulletOverlap;
+  };
+
   const detectCollision = useCallback(() => {
     return obstacles.some(obstacle => {
-      const isCollision = 
-        50 < obstacle.x + obstacle.width && // Verifica si el personaje (posición en X) está dentro del rango del obstáculo
-        50 + 20 > obstacle.x && // Verifica si el personaje (ancho del personaje) choca con el obstáculo
-        playerY < obstacle.y + obstacle.height && // Verifica si el personaje (posición en Y) está dentro del rango vertical del obstáculo
-        playerY + 20 > obstacle.y; // Verifica si el personaje (altura) choca con el obstáculo
+      const isCollision =
+        50 < obstacle.x + obstacle.width &&
+        70 > obstacle.x &&
+        playerY < obstacle.y + obstacle.height &&
+        playerY + 20 > obstacle.y;
       return isCollision;
     });
   }, [obstacles, playerY]);
+
+  const detectBulletCollision = useCallback(() => {
+    setObstacles(prevObstacles => {
+      return prevObstacles.filter(obstacle => {
+        const isHit = bulletsOnMap.some(bullet => {
+          return (
+            bullet.x < obstacle.x + obstacle.width &&
+            bullet.x + bullet.width > obstacle.x &&
+            bullet.y < obstacle.y + obstacle.height &&
+            bullet.y + bullet.height > obstacle.y
+          );
+        });
+        return !isHit;
+      });
+    });
+
+    setBulletsOnMap(prevBullets => 
+      prevBullets.filter(bullet => {
+        return !obstacles.some(obstacle => {
+          return (
+            bullet.x < obstacle.x + obstacle.width &&
+            bullet.x + bullet.width > obstacle.x &&
+            bullet.y < obstacle.y + obstacle.height &&
+            bullet.y + bullet.height > obstacle.y
+          );
+        });
+      })
+    );
+  }, [bulletsOnMap, obstacles]);
 
   useEffect(() => {
     let interval;
     if (isGameStarted && !isGamePaused) {
       interval = setInterval(() => {
-        setObstacles((prev) => prev.map((obstacle) => ({ ...obstacle, x: obstacle.x - 5 })));
-        setCoinsOnMap((prev) => prev.map((coin) => ({ ...coin, x: coin.x - 5 })));
+        setObstacles(prev =>
+          prev.map(obstacle => ({ ...obstacle, x: obstacle.x - 5 }))
+        );
+        setCoinsOnMap(prev =>
+          prev.map(coin => ({ ...coin, x: coin.x - 5 }))
+        );
+        setBulletsOnMap(prev =>
+          prev.map(bullet => ({ ...bullet, x: bullet.x + 5 }))
+        );
+        setGreenBulletsOnMap(prev =>
+          prev.map(greenBullet => ({ ...greenBullet, x: greenBullet.x - 5 }))
+        );
 
         if (Math.random() < 0.05) {
-          setObstacles((prev) => [...prev, { x: 400, y: 200, width: 20, height: 20 }]);
+          const newObstacleX = 400;
+          const newObstacleY = 200;
+          if (!isOverlapping(newObstacleX, newObstacleY)) {
+            setObstacles(prev => [
+              ...prev,
+              { x: newObstacleX, y: newObstacleY, width: 20, height: 20 }
+            ]);
+          }
         }
 
         if (Math.random() < 0.05) {
+          const newCoinX = 400;
           const newCoinY = Math.random() > 0.5 ? 150 : 200;
-          if (!isTooCloseToOtherCoins(400, newCoinY)) {
-            setCoinsOnMap((prev) => [...prev, { x: 400, y: newCoinY, radius: 10 }]);
+          if (!isOverlapping(newCoinX, newCoinY)) {
+            setCoinsOnMap(prev => [
+              ...prev,
+              { x: newCoinX, y: newCoinY, radius: 10 }
+            ]);
           }
         }
 
-        setBullets((prev) => prev.map((bullet) => ({ ...bullet, x: bullet.x + 10 })));
-
-        setObstacles((prevObstacles) => prevObstacles.filter((obstacle, oIndex) => {
-          let shouldKeep = true;
-
-          bullets.forEach((bullet, bIndex) => {
-            const isCollision = bullet.x < obstacle.x + obstacle.width &&
-                                bullet.x + bullet.width > obstacle.x &&
-                                bullet.y < obstacle.y + obstacle.height &&
-                                bullet.y + bullet.height > obstacle.y;
-
-            if (isCollision) {
-              setBullets((prev) => prev.filter((_, i) => i !== bIndex));
-              shouldKeep = false;
-            }
-          });
-
-          return shouldKeep;
-        }));
-
-        setCoinsOnMap((prevCoins) => prevCoins.filter((coin, index) => {
-          const isCollisionWithPlayer = coin.x < 70 && coin.x > 50 && playerY === coin.y;
-          if (isCollisionWithPlayer) {
-            updateCoins(coins + 1);
-            return false;
+        if (Math.random() < 0.02) {
+          const newBulletX = 400;
+          const newBulletY = Math.random() > 0.5 ? 150 : 200;
+          if (!isOverlapping(newBulletX, newBulletY)) {
+            setGreenBulletsOnMap(prev => [
+              ...prev,
+              { x: newBulletX, y: newBulletY, width: 5, height: 2 }
+            ]);
           }
-          return true;
-        }));
+        }
 
-        // Verificar colisión entre el personaje y los obstáculos
+        setCoinsOnMap(prevCoins =>
+          prevCoins.filter(coin => {
+            const isCollisionWithPlayer =
+              coin.x < 70 && coin.x > 50 && playerY === coin.y;
+            if (isCollisionWithPlayer) {
+              updateCoins(coins + 1);
+              return false;
+            }
+            return true;
+          })
+        );
+
+        setGreenBulletsOnMap(prevGreenBullets =>
+          prevGreenBullets.filter(greenBullet => {
+            const isCollisionWithPlayer =
+              greenBullet.x < 70 && greenBullet.x > 50 && playerY === greenBullet.y;
+            if (isCollisionWithPlayer) {
+              setRemainingBullets(prev => Math.min(prev + 1, 6)); // Aumentar el número de balas sin exceder 6
+              return false;
+            }
+            return true;
+          })
+        );
+
+        detectBulletCollision();
+
         if (detectCollision()) {
           alert('Perdiste! Reiniciando el juego...');
-          startGame(); // Reinicia el juego después de la colisión
+          startGame();
         }
-
       }, 100);
     }
-
     return () => clearInterval(interval);
-  }, [isGameStarted, isGamePaused, bullets, playerY, coins, updateCoins, coinsOnMap, isTooCloseToOtherCoins, detectCollision]);
+  }, [
+    isGameStarted,
+    isGamePaused,
+    coins,
+    updateCoins,
+    coinsOnMap,
+    bulletsOnMap,
+    detectCollision,
+    detectBulletCollision
+  ]);
 
+  // Aquí está la implementación del salto y la posición del jugador
   useEffect(() => {
     if (isJumping) {
-      setPlayerY(150);
-      setTimeout(() => setPlayerY(200), 500);
-      setIsJumping(false);
+      setPlayerY(150); // Cambia la posición Y del jugador al saltar
+      const jumpTimeout = setTimeout(() => {
+        setPlayerY(200); // Regresa la posición Y después de 500ms
+        setIsJumping(false); // Restablece el estado de salto
+      }, 500); // Asegúrate de que esto coincida con la duración del salto
+
+      return () => clearTimeout(jumpTimeout); // Limpiar el timeout
     }
   }, [isJumping]);
 
-  const handleKeyDown = useCallback((e) => {
-    if (e.code === 'Space' && !isJumping) {
-      setIsJumping(true);
-    }
-    if (e.code === 'KeyF') {
-      setBullets((prev) => [...prev, { x: 60, y: playerY + 10, width: 5, height: 2 }]);
-    }
-  }, [isJumping, playerY]);
+  const handleKeyDown = useCallback(
+    e => {
+      if (isGamePaused) return;
+
+      if (e.code === 'Space' && !isJumping) {
+        setIsJumping(true);
+      }
+      if (e.code === 'KeyF' && remainingBullets > 0) {
+        setBulletsOnMap(prev => [
+          ...prev,
+          { x: 60, y: playerY + 10, width: 5, height: 2 }
+        ]);
+        setRemainingBullets(prev => prev - 1);
+      }
+    },
+    [isJumping, playerY, isGamePaused, remainingBullets]
+  );
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -126,13 +216,14 @@ const GamePage = () => {
     setIsGameStarted(true);
     setObstacles([]);
     setCoinsOnMap([]);
-    setBullets([]);
+    setBulletsOnMap([]);
+    setGreenBulletsOnMap([]);
     setIsGamePaused(false);
     setPlayerY(200);
   };
 
   const togglePause = () => {
-    setIsGamePaused((prev) => !prev);
+    setIsGamePaused(prev => !prev);
   };
 
   const endGame = () => {
@@ -140,7 +231,8 @@ const GamePage = () => {
     setIsGamePaused(false);
     setObstacles([]);
     setCoinsOnMap([]);
-    setBullets([]);
+    setBulletsOnMap([]);
+    setGreenBulletsOnMap([]);
     setPlayerY(200);
     navigate('/menu'); // Redirecciona al menú
   };
@@ -159,30 +251,68 @@ const GamePage = () => {
           {obstacles.map((obstacle, index) => (
             <div
               key={index}
-              style={{ position: 'absolute', left: `${obstacle.x}px`, top: `${obstacle.y}px`, width: '20px', height: '20px', background: 'red' }}
+              className="obstacle"
+              style={{
+                position: 'absolute',
+                left: `${obstacle.x}px`,
+                top: `${obstacle.y}px`,
+                width: `${obstacle.width}px`,
+                height: `${obstacle.height}px`,
+                background: 'red'
+              }}
             />
           ))}
           {coinsOnMap.map((coin, index) => (
             <div
               key={index}
-              style={{ position: 'absolute', left: `${coin.x}px`, top: `${coin.y}px`, width: '10px', height: '10px', background: 'gold', borderRadius: '50%' }}
+              className="coin"
+              style={{
+                position: 'absolute',
+                left: `${coin.x}px`,
+                top: `${coin.y}px`,
+                width: `${coin.radius * 2}px`,
+                height: `${coin.radius * 2}px`,
+                borderRadius: '50%',
+                background: 'gold'
+              }}
             />
           ))}
-          {bullets.map((bullet, index) => (
+          {bulletsOnMap.map((bullet, index) => (
             <div
               key={index}
-              style={{ position: 'absolute', left: `${bullet.x}px`, top: `${bullet.y}px`, width: '5px', height: '2px', background: 'black' }}
+              className="bullet"
+              style={{
+                position: 'absolute',
+                left: `${bullet.x}px`,
+                top: `${bullet.y}px`,
+                width: `${bullet.width}px`,
+                height: `${bullet.height}px`,
+                background: 'black'
+              }}
             />
           ))}
+          {greenBulletsOnMap.map((greenBullet, index) => (
+            <div
+              key={index}
+              className="green-bullet"
+              style={{
+                position: 'absolute',
+                left: `${greenBullet.x}px`,
+                top: `${greenBullet.y}px`,
+                width: `${greenBullet.width}px`,
+                height: `${greenBullet.height}px`,
+                background: 'green'
+              }}
+            />
+          ))}
+          <p>Balas restantes: {remainingBullets}</p>
+          <button onClick={togglePause}>
+            {isGamePaused ? 'Reanudar' : 'Pausar'}
+          </button>
+          <button onClick={endGame}>Salir</button>
         </div>
       )}
-
-      {isGameStarted && (
-        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '10px', marginTop: '10px' }}>
-          <button onClick={togglePause}>{isGamePaused ? 'Reanudar' : 'Pausar'}</button>
-          <button onClick={endGame}>Terminar Partida</button>
-        </div>
-      )}
+      {!isGameStarted && <button onClick={startGame}>Iniciar Juego</button>}
     </div>
   );
 };

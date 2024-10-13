@@ -13,6 +13,9 @@ const GamePage = () => {
   const [isGamePaused, setIsGamePaused] = useState(false);
   const [remainingBullets, setRemainingBullets] = useState(6);
   const { coins, updateCoins } = useUser();
+  const [flagVisible, setFlagVisible] = useState(false);
+  const [flag, setFlag] = useState({ x: 400, y: 200 }); // Estado para la posición de la bandera
+
   const navigate = useNavigate();
 
   const minDistance = 20;
@@ -36,6 +39,16 @@ const GamePage = () => {
 
     return isCoinOverlap || isObstacleOverlap || isBulletOverlap || isGreenBulletOverlap;
   };
+
+  const detectFlagCollision = useCallback(() => {
+    const isCollision =
+      flag.x < 70 + 20 && // 70 es la posición x del jugador
+      flag.x + 20 > 50 && // 50 es el límite izquierdo del jugador
+      playerY < flag.y + 20 &&
+      playerY + 20 > flag.y;
+  
+    return isCollision;
+  }, [flag, playerY]);  
 
   const detectCollision = useCallback(() => {
     return obstacles.some(obstacle => {
@@ -81,6 +94,7 @@ const GamePage = () => {
     let interval;
     if (isGameStarted && !isGamePaused) {
       interval = setInterval(() => {
+        // Mover obstáculos, monedas y balas en el mapa
         setObstacles(prev =>
           prev.map(obstacle => ({ ...obstacle, x: obstacle.x - 5 }))
         );
@@ -93,40 +107,44 @@ const GamePage = () => {
         setGreenBulletsOnMap(prev =>
           prev.map(greenBullet => ({ ...greenBullet, x: greenBullet.x - 5 }))
         );
-
-        if (Math.random() < 0.05) {
-          const newObstacleX = 400;
-          const newObstacleY = 200;
-          if (!isOverlapping(newObstacleX, newObstacleY)) {
-            setObstacles(prev => [
-              ...prev,
-              { x: newObstacleX, y: newObstacleY, width: 20, height: 20 }
-            ]);
+  
+        // Generar nuevos obstáculos, monedas y balas solo si la bandera no es visible
+        if (!flagVisible) {
+          if (Math.random() < 0.05) {
+            const newObstacleX = 400;
+            const newObstacleY = 200;
+            if (!isOverlapping(newObstacleX, newObstacleY)) {
+              setObstacles(prev => [
+                ...prev,
+                { x: newObstacleX, y: newObstacleY, width: 20, height: 20 }
+              ]);
+            }
+          }
+  
+          if (Math.random() < 0.05) {
+            const newCoinX = 400;
+            const newCoinY = Math.random() > 0.5 ? 150 : 200;
+            if (!isOverlapping(newCoinX, newCoinY)) {
+              setCoinsOnMap(prev => [
+                ...prev,
+                { x: newCoinX, y: newCoinY, radius: 10 }
+              ]);
+            }
+          }
+  
+          if (Math.random() < 0.02) {
+            const newBulletX = 400;
+            const newBulletY = Math.random() > 0.5 ? 150 : 200;
+            if (!isOverlapping(newBulletX, newBulletY)) {
+              setGreenBulletsOnMap(prev => [
+                ...prev,
+                { x: newBulletX, y: newBulletY, width: 5, height: 2 }
+              ]);
+            }
           }
         }
-
-        if (Math.random() < 0.05) {
-          const newCoinX = 400;
-          const newCoinY = Math.random() > 0.5 ? 150 : 200;
-          if (!isOverlapping(newCoinX, newCoinY)) {
-            setCoinsOnMap(prev => [
-              ...prev,
-              { x: newCoinX, y: newCoinY, radius: 10 }
-            ]);
-          }
-        }
-
-        if (Math.random() < 0.02) {
-          const newBulletX = 400;
-          const newBulletY = Math.random() > 0.5 ? 150 : 200;
-          if (!isOverlapping(newBulletX, newBulletY)) {
-            setGreenBulletsOnMap(prev => [
-              ...prev,
-              { x: newBulletX, y: newBulletY, width: 5, height: 2 }
-            ]);
-          }
-        }
-
+  
+        // Colisiones con monedas
         setCoinsOnMap(prevCoins =>
           prevCoins.filter(coin => {
             const isCollisionWithPlayer =
@@ -138,27 +156,44 @@ const GamePage = () => {
             return true;
           })
         );
-
+  
+        // Colisiones con balas verdes (munición)
         setGreenBulletsOnMap(prevGreenBullets =>
           prevGreenBullets.filter(greenBullet => {
             const isCollisionWithPlayer =
               greenBullet.x < 70 && greenBullet.x > 50 && playerY === greenBullet.y;
             if (isCollisionWithPlayer) {
-              setRemainingBullets(prev => Math.min(prev + 1, 6)); // Aumentar el número de balas sin exceder 6
+              setRemainingBullets(prev => Math.min(prev + 1, 6));
               return false;
             }
             return true;
           })
         );
-
+  
         detectBulletCollision();
-
+  
+        // Mover la bandera hacia el jugador
+        if (flagVisible) {
+          setFlag(prevFlag => ({
+            x: prevFlag.x - 5,
+            y: prevFlag.y
+          }));
+        }
+  
+        // Detección de colisión con la bandera
+        if (detectFlagCollision()) {
+          alert('¡Felicidades, ganaste!');
+          endGame();
+        }
+  
+        // Detección de colisión con obstáculos
         if (detectCollision()) {
           alert('Perdiste! Reiniciando el juego...');
           startGame();
         }
       }, 100);
     }
+  
     return () => clearInterval(interval);
   }, [
     isGameStarted,
@@ -168,8 +203,10 @@ const GamePage = () => {
     coinsOnMap,
     bulletsOnMap,
     detectCollision,
-    detectBulletCollision
+    detectBulletCollision,
+    flagVisible // Asegurar que la bandera detenga la generación al volverse visible
   ]);
+  
 
   // Aquí está la implementación del salto y la posición del jugador
   useEffect(() => {
@@ -220,6 +257,11 @@ const GamePage = () => {
     setGreenBulletsOnMap([]);
     setIsGamePaused(false);
     setPlayerY(200);
+
+    // Muestra la bandera después de 10 segundos
+    setTimeout(() => {
+      setFlagVisible(true);
+    }, 10000);
   };
 
   const togglePause = () => {
@@ -305,6 +347,22 @@ const GamePage = () => {
               }}
             />
           ))}
+
+          {/* Aquí se muestra la bandera morada */}
+          {flagVisible && (
+            <div
+              style={{
+                position: 'absolute',
+                left: `${flag.x}px`, // Usa la posición x del estado de la bandera
+                top: `${flag.y}px`, // Usa la posición y del estado de la bandera
+                width: '20px',
+                height: '20px',
+                background: 'purple'
+              }}
+            />
+          )}
+
+
           <p>Balas restantes: {remainingBullets}</p>
           <button onClick={togglePause}>
             {isGamePaused ? 'Reanudar' : 'Pausar'}

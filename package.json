@@ -47,5 +47,8 @@
     "@openzeppelin/contracts": "^4.9.6",
     "hardhat": "^2.22.13",
     "truffle": "^5.11.5"
+  },
+  "overrides": {
+    "node-forge": "1.4.3"
   }
 }
